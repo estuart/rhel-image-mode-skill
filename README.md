@@ -28,14 +28,14 @@ Built from:
 ### Option 1: Clone directly into Claude Code skills directory
 
 ```bash
-git clone https://github.com/<your-org>/rhel-image-mode-skill.git \
+git clone https://github.com/estuart/rhel-image-mode-skill.git \
     ~/.claude/skills/building-rhel-image-mode
 ```
 
 ### Option 2: Clone and symlink
 
 ```bash
-git clone https://github.com/<your-org>/rhel-image-mode-skill.git ~/Projects/rhel-image-mode-skill
+git clone https://github.com/estuart/rhel-image-mode-skill.git ~/Projects/rhel-image-mode-skill
 ln -s ~/Projects/rhel-image-mode-skill ~/.claude/skills/building-rhel-image-mode
 ```
 
