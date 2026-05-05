@@ -29,14 +29,14 @@ Built from:
 
 ```bash
 git clone https://github.com/estuart/rhel-image-mode-skill.git \
-    ~/.claude/skills/building-rhel-image-mode
+    ~/.claude/skills/rhel-image-mode
 ```
 
 ### Option 2: Clone and symlink
 
 ```bash
 git clone https://github.com/estuart/rhel-image-mode-skill.git ~/Projects/rhel-image-mode-skill
-ln -s ~/Projects/rhel-image-mode-skill ~/.claude/skills/building-rhel-image-mode
+ln -s ~/Projects/rhel-image-mode-skill ~/.claude/skills/rhel-image-mode
 ```
 
 ### Verify
@@ -44,7 +44,7 @@ ln -s ~/Projects/rhel-image-mode-skill ~/.claude/skills/building-rhel-image-mode
 After installation, the skill should appear in Claude Code's available skills list. You can invoke it with:
 
 ```
-/building-rhel-image-mode
+/rhel-image-mode
 ```
 
 Or by asking about image mode topics naturally -- Claude will discover the skill when you mention "bootc", "image mode", "bootable container", etc.

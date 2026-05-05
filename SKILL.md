@@ -1,18 +1,18 @@
 ---
-name: building-rhel-image-mode
+name: rhel-image-mode
 description: >
   Build, deploy, and manage RHEL Image Mode (bootc) container images.
   Covers Containerfile authoring, bootc CLI operations, bootc-image-builder
   disk image creation, deployment to bare metal/VM/cloud, lifecycle management
   (upgrade/rollback/switch), filesystem model, air-gapped builds, embedded
   containers via Quadlet, and CI/CD pipeline patterns.
-  Triggers: /building-rhel-image-mode, "image mode", "bootc", "rhel-bootc",
+  Triggers: /rhel-image-mode, "image mode", "bootc", "rhel-bootc",
   "bootc image", "bootable container", "image mode containerfile",
   "bootc install", "bootc upgrade", "bootc-image-builder".
 user_invocable: true
 ---
 
-# building-rhel-image-mode — RHEL Image Mode Reference
+# rhel-image-mode — RHEL Image Mode Reference
 
 ## Architecture
 
