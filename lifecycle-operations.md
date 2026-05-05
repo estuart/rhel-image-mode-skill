@@ -91,6 +91,14 @@ Use cases:
 - Moving a system from one image stream to another (e.g., web-tier to db-tier)
 - Switching from CentOS Stream to RHEL base image
 
+### Switching to a locally-built image
+
+For dev/testing, switch to an image in local podman storage without a registry:
+
+```bash
+bootc switch --transport containers-storage localhost/my-test-image:latest
+```
+
 ## bootc status
 
 Shows the current deployment state.
@@ -228,6 +236,28 @@ v1 image (schema v1) -> upgrade to v2 image (migrates schema to v2)
 ```
 
 Solution: ensure v1 app can read schema v2 data, OR restore data snapshot alongside rollback.
+
+## Auditing Deployments
+
+### .bootc-aleph.json
+
+After installation, bootc writes metadata to `/sysroot/.bootc-aleph.json` containing:
+- Source and target image digests
+- OCI labels from the container image
+- Installation timestamp
+- bootc version used for install
+- Kernel version
+- SELinux state
+
+Use this for auditing which image was originally installed on a system.
+
+### bootc status
+
+Check current deployment state, staged updates, and rollback targets:
+
+```bash
+bootc status
+```
 
 ## Troubleshooting
 

@@ -11,6 +11,8 @@
 - Logically-bound and physically-bound images
 - Kernel argument injection
 - Third-party driver installation
+- Handling mixed read-only and writable paths
+- Image linting
 - Anti-patterns
 
 ## General Containerfile Structure
@@ -220,6 +222,44 @@ RUN dnf install -y /tmp/my-driver.rpm && rm /tmp/my-driver.rpm
 
 RPM `%post` scripts trigger `depmod` automatically inside the image.
 
+## Handling Mixed Read-Only and Writable Paths
+
+When software installs to /opt with mixed content (binaries + logs/data), use one of:
+
+### Symlink approach
+
+```dockerfile
+RUN dnf install -y examplepkg && dnf clean all && \
+    mv /opt/examplepkg/logs /var/log/examplepkg && \
+    ln -sr /var/log/examplepkg /opt/examplepkg/logs
+```
+
+### BindPaths approach (no image modification needed)
+
+In the systemd unit file:
+
+```ini
+[Service]
+BindPaths=/var/log/exampleapp:/opt/exampleapp/logs
+```
+
+This maps the writable /var path into the immutable /opt path at runtime without modifying the image.
+
+## Image Linting
+
+Validate images before pushing with `bootc container lint`:
+
+```bash
+podman run --rm <image> bootc container lint --fatal-warnings
+```
+
+Checks for:
+- Missing `tmpfiles.d` entries for /var paths that need pre-created directories
+- Files incorrectly placed in `/usr/etc` (undefined behavior)
+- Other common bootc image issues
+
+Run this in CI/CD pipelines as a gate before pushing images.
+
 ## Anti-Patterns
 
 | Do NOT | Instead |
@@ -233,3 +273,5 @@ RPM `%post` scripts trigger `depmod` automatically inside the image.
 | Write application data to immutable paths | Plan writable paths under `/var` or use mount units |
 | Skip `dnf clean all` in RUN steps | Always clean to reduce image size |
 | Use `ENV` for system-wide environment | Use systemd environment files |
+| `RUN podman pull` inside a Containerfile | Use Quadlet + bound images instead (OCI whiteout files cause nested layer problems) |
+| Place files in `/usr/etc` | Use `/etc` for config; `/usr/etc` is an internal implementation detail |

@@ -62,11 +62,14 @@ Each team owns their layer. Changes flow down the chain via `FROM` inheritance.
 
 RHEL 10 is the primary target. RHEL 9 has feature parity but uses a different base image path.
 
-## Build and Push
+## Build, Validate, and Push
 
 ```bash
 # Build
 podman build -t quay.io/<namespace>/<image>:<tag> .
+
+# Lint the image for common issues
+podman run --rm <image> bootc container lint --fatal-warnings
 
 # Push to registry
 podman login quay.io
@@ -75,6 +78,8 @@ podman push quay.io/<namespace>/<image>:<tag>
 # Verify
 podman images
 ```
+
+`bootc container lint` checks for missing tmpfiles.d entries for /var paths, files incorrectly placed in /usr/etc, and other common mistakes.
 
 ### Tag promotion
 
@@ -123,12 +128,39 @@ Tag images with commit SHAs for traceability: `<image>:$CI_COMMIT_SHORT_SHA`
 If an application needs a path like `/application`, either:
 - Symlink it: `/application -> /var/lib/application`
 - Configure a systemd mount unit to attach external storage
+- Use `BindPaths=` in the systemd unit: `BindPaths=/var/log/myapp:/opt/myapp/logs`
 
 Failure to plan writable paths causes "Read-only file system" errors at runtime.
+
+### State overlays
+
+To make `/opt` (or other toplevel directories) writable across reboots while still receiving image updates:
+
+```bash
+systemctl enable ostree-state-overlay@opt.service
+```
+
+State overlay semantics: changes persist across reboots, but new container image files override locally modified versions during updates. Smaller mutable surface than transient root.
+
+### Transient /etc mode
+
+For fully config-managed systems where /etc should reset on every boot:
+
+```ini
+# /usr/lib/ostree/prepare-root.conf
+[etc]
+transient = true
+```
+
+This eliminates persistent /etc state entirely. Useful when all machine-specific configuration comes from kernel commandline, cloud-init, or ignition.
 
 ### /run, /proc, other API filesystems
 
 No support for shipping content in these paths via container images.
+
+### SELinux caveat for custom directories
+
+Custom toplevel directories created during image build (e.g., `RUN mkdir /mydata`) may receive `default_t` SELinux labels, potentially blocking access. Define file contexts explicitly when needed.
 
 ## Users and Credentials
 
@@ -200,15 +232,17 @@ bootc-image-builder uses **local container storage only**. It cannot pull from r
 
 See [deployment-methods.md](deployment-methods.md) for complete BIB commands and all deployment paths.
 
+## Post-Install Metadata
+
+After installation, bootc writes `.bootc-aleph.json` to the physical filesystem root containing source/target image digests, OCI labels, build timestamp, kernel version, and SELinux state. Accessible post-boot at `/sysroot/.bootc-aleph.json`. Useful for auditing deployed systems.
+
 ## Known Gaps
 
 These topics are not fully covered by this skill:
 
-- **Image signing/verification** — sigstore, cosign, GPG signing workflows
 - **FIPS mode** — building FIPS-compliant bootc images
 - **Satellite-as-registry** — concrete configuration steps for Satellite integration
 - **Fleet monitoring** — tracking image versions across deployed systems at scale
-- **bootc status output** — detailed format of status command output
 
 ## Additional References
 
@@ -219,6 +253,7 @@ These topics are not fully covered by this skill:
 ### External documentation
 
 - [RHEL 10 Image Mode docs](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/10/html/using_image_mode_for_rhel_to_build_deploy_and_manage_operating_systems/index)
+- [Upstream bootc project docs](https://bootc.dev/bootc/)
 - [Image Mode use cases](https://developers.redhat.com/articles/2024/11/05/image-mode-rhel-4-key-use-cases-streamlining-your-os)
 - [GitLab CI/CD pipeline for image mode](https://developers.redhat.com/articles/2026/02/12/how-build-image-mode-pipeline-gitlab)
 - [Ansible system roles with image mode](https://developers.redhat.com/articles/2025/03/18/how-use-rhel-system-roles-image-mode)

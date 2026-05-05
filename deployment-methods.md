@@ -5,7 +5,10 @@
 - Deployment overview
 - bootc install to-disk (bare metal / VM)
 - bootc install to-filesystem (custom partitioning)
+- bootc install to-existing-root (in-place conversion)
 - system-reinstall-bootc (cloud instance conversion)
+- Loopback disk image creation
+- Booting locally-built images (dev/testing)
 - KVM with QCOW2
 - vSphere with VMDK
 - AWS with AMI
@@ -22,6 +25,7 @@ Installation happens **once**. After initial deployment, all future updates come
 |--------|--------|----------|
 | `bootc install to-disk` | Bare metal, VM | GA |
 | `bootc install to-filesystem` | Custom partitioning | GA |
+| `bootc install to-existing-root` | In-place OS conversion | GA |
 | `system-reinstall-bootc` | Running cloud instance | GA (RHEL 9.6+/10.0+) |
 | bootc-image-builder QCOW2 | KVM/QEMU VMs | GA |
 | bootc-image-builder AMI | AWS EC2 | GA |
@@ -68,6 +72,22 @@ mount /dev/disk /mnt
 bootc install to-filesystem --karg=root=UUID=<uuid of /mnt> --imgref $self /mnt
 ```
 
+## bootc install to-existing-root
+
+Converts a running Linux system in-place to the target container image. Destructive to `/boot` and `/boot/efi`; the previous root filesystem is preserved at `/sysroot` after reboot for data migration.
+
+```bash
+podman run --rm --privileged --pid=host \
+    -v /:/target \
+    -v /dev:/dev \
+    -v /var/lib/containers:/var/lib/containers \
+    --security-opt label=type:unconfined_t \
+    <image> \
+    bootc install to-existing-root /target
+```
+
+After reboot, the previous filesystem is accessible at `/sysroot`. No automated `/etc` migration occurs — manually copy needed files from `/sysroot/etc`.
+
 ## system-reinstall-bootc (Cloud Instance Conversion)
 
 Converts a running package-mode RHEL instance to image mode with a single command. Wraps `bootc install to-existing-root`.
@@ -81,6 +101,39 @@ Requirements:
 - Package-based RHEL 9.6+ or 10.0+
 - Destructive: replaces the existing OS
 - SSH key selected at instance launch is preserved
+
+## Loopback Disk Image Creation
+
+Create a raw disk image without bootc-image-builder, using `bootc install to-disk` with a loopback device:
+
+```bash
+truncate -s 10G myimage.raw
+podman run --rm --privileged --pid=host \
+    -v /var/lib/containers:/var/lib/containers \
+    -v .:/output \
+    --security-opt label=type:unconfined_t \
+    <image> \
+    bootc install to-disk --generic-image --via-loopback /output/myimage.raw
+```
+
+Set `BOOTC_DIRECT_IO=on` environment variable for better performance with loopback devices. The `--generic-image` flag omits the specific image reference so the resulting disk can be used as a generic template.
+
+## Booting Locally-Built Images (Dev/Testing)
+
+Boot a locally-built image without pushing to a registry. Useful for hotfixes or development:
+
+```bash
+# Build locally
+podman build -t localhost/my-test-image:latest .
+
+# Switch the running system to the local image
+bootc switch --transport containers-storage localhost/my-test-image:latest
+
+# Apply on next reboot
+systemctl reboot
+```
+
+The `--transport containers-storage` flag tells bootc to pull from the local podman storage instead of a remote registry. The host bootc storage is separate from podman's default `/var/lib/containers`.
 
 ## KVM with QCOW2
 
