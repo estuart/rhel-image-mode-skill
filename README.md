@@ -71,6 +71,35 @@ Once installed, ask Claude Code things like:
 - "How does /etc work in image mode?"
 - "Build an air-gapped bootc image for a disconnected environment"
 
+### Example: Air-Gapped Build
+
+**Prompt:** "Build an air-gapped bootc image for a disconnected environment"
+
+The skill walks through the full disconnected workflow -- mirroring the base image, writing a Containerfile with local repos, handling GPG keys, physically embedding container workloads via skopeo, and converting to an ISO with bootc-image-builder. It flags the common pitfalls that trip people up in disconnected environments:
+
+```dockerfile
+# Pull from internal mirror, not the internet
+FROM registry.internal.example.com:5000/rhel10/rhel-bootc:10.2
+
+# Repo config must be INSIDE the image, not on the host
+COPY local-baseos.repo /etc/yum.repos.d/local-baseos.repo
+
+# GPG keys must use file:// paths -- BIB re-validates during ISO creation
+COPY RPM-GPG-KEY-redhat-release /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+RUN dnf install -y httpd firewalld && dnf clean all
+
+# Pre-install to avoid BIB download failures in air-gapped
+RUN dnf install -y kernel-bootc anaconda-dracut-modules && dnf clean all
+
+# Physically embed container workloads (no runtime network pull)
+RUN skopeo copy --preserve-digests \
+    docker://registry.internal.example.com:5000/my-app:latest \
+    dir:/usr/lib/containers-image-cache/my-app
+```
+
+The output also covers updating disconnected systems, the `bootc switch --transport containers-storage` escape hatch, and a troubleshooting table for common air-gapped failures like `GPGKeyReadError` and `cannot build manifest`.
+
 ## Contributing
 
 PRs welcome. If you find gaps or inaccuracies, open an issue or submit a fix. Key areas where contributions would be valuable:
